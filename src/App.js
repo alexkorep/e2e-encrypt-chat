@@ -195,9 +195,6 @@ function App() {
           }}
         />
       </div>
-      <div style={styles.converationDetails}>
-        Conversation details
-        </div>
     </div>
   )
 };
@@ -225,10 +222,6 @@ const styles = {
     borderColor: "#ccc",
     borderRightStyle: "solid",
     borderLeftStyle: "solid",
-  },
-  converationDetails: {
-    display: 'flex',
-    flex: 1,
   },
   userrec: {
     padding: '8px',
