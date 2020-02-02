@@ -18,6 +18,24 @@ const pubnub = new PubNub({
 });
 
 const keyPair = nacl.box.keyPair();
+console.log(keyPair.publicKey);
+// console.log(new Uint8Array(Array.from(keyPair.publicKey)), keyPair.publicKey);
+// const otherKeyPair = nacl.box.keyPair();
+// const nonce = nacl.randomBytes(24)
+// const box = nacl.box(
+//   naclUtil.decodeUTF8('Hi there!'),
+//   nonce,
+//   otherKeyPair.publicKey,
+//   keyPair.secretKey
+// )
+// const payload = nacl.box.open(
+//   box,
+//   nonce,
+//   keyPair.publicKey,
+//   otherKeyPair.secretKey
+// );
+// console.log('payload', payload);
+// console.log(naclUtil.encodeUTF8(payload));
 
 const getAvatar = (id) => (`https://i.pravatar.cc/36?u=${id}`);
 
@@ -29,6 +47,7 @@ const encrypt = (userToPublicKey, text) => {
     new Uint8Array(userToPublicKey),
     keyPair.secretKey
   )
+  console.log('----', box, nonce,keyPair.publicKey)
   return {
     box: Array.from(box),
     nonce: Array.from(nonce)
@@ -37,6 +56,7 @@ const encrypt = (userToPublicKey, text) => {
 
 const decrypt = (userFromPublicKey, message) => {
   console.log('message', message, userFromPublicKey)
+  console.log('----', message.box, message.nonce, userFromPublicKey)
   const payload = nacl.box.open(
     new Uint8Array(message.box),
     new Uint8Array(message.nonce),
@@ -51,15 +71,15 @@ const keyToStr = (key) => {
   if (!key) {
     return 'none';
   }
-  return key.map(val => val.toString(16)).join('-');
+  return key.map(val => val.toString(10)).join('-');
 }
 
 function App() {
   const [messages, setMessages] = useState([]);
   const [users, dispatchUsers] = useReducer((state, presenceEvent) => {
     console.log('presenceEvent', presenceEvent)
-    const { action, uuid, publicKey } = presenceEvent;
-    if (action === 'join' || action === 'state-change') {
+    const { action, uuid } = presenceEvent;
+    if (action === 'join' || action === 'state-change' || action === 'here-now') {
       if (uuid === userId) {
         // Ignore myself
         return state;
@@ -68,6 +88,7 @@ function App() {
         ...state[uuid],
         id: uuid,
       };
+      const publicKey = presenceEvent.state ? presenceEvent.state.publicKey : null;
       if (publicKey) {
         state[uuid].publicKey = publicKey;
       }
@@ -112,6 +133,7 @@ function App() {
 
     // Publish my public key
     const keyArray = Array.from(keyPair.publicKey)
+    console.log('Publish', keyArray);
     pubnub.setState({
       channels: [channel],
       state: {
@@ -125,9 +147,11 @@ function App() {
         console.log('occupants', occupants);
         occupants.forEach(user => {
           dispatchUsers({
-            action: 'join',
+            action: 'here-now',
             uuid: user.uuid,
-            publicKey: user.state ? user.state.publicKey : null,
+            state: {
+              publicKey: user.state ? user.state.publicKey : null,
+            }
           });
         })
       }
