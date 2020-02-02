@@ -18,15 +18,17 @@ const getAvatar = (id) => (`https://i.pravatar.cc/36?u=${id}`);
 function App() {
   const [messages, setMessages] = useState([]);
   const [users, dispatchUsers] = useReducer((state, presenceEvent) => {
-    const {action, uuid} = presenceEvent;
+    const { action, uuid } = presenceEvent;
     if (action === 'join') {
       state[uuid] = {
         id: uuid,
       };
-      return {...state};
-    } else if (action === 'leave' || action === 'timeout'){
+      return { ...state };
+    } else if (action === 'leave' || action === 'timeout') {
+      console.log('Deleting user', uuid);
       delete state[uuid];
-      return {...state};
+      console.log('state', state);
+      return { ...state };
     }
     return state;
   }, {});
@@ -50,6 +52,17 @@ function App() {
     };
     pubnub.subscribe({ channels: [channel], withPresence: true });
     pubnub.addListener(listener);
+    pubnub.hereNow({ channels: [channel], includeState: true },
+      (status, response) => {
+        const { occupants } = response.channels[channel];
+        occupants.forEach(user => {
+          dispatchUsers({
+            action: 'join',
+            uuid: user.uuid,
+          });
+        })
+      }
+    );
     return () => {
       pubnub.unsubscribe({ channels: [channel] });
       pubnub.removeListener(listener);
@@ -117,6 +130,7 @@ const styles = {
     flex: 1,
     flexDirection: 'column',
     padding: '12px',
+    overflowY: 'scroll',
   },
   chat: {
     display: "flex",
