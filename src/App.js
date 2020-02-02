@@ -18,24 +18,6 @@ const pubnub = new PubNub({
 });
 
 const keyPair = nacl.box.keyPair();
-console.log(keyPair.publicKey);
-// console.log(new Uint8Array(Array.from(keyPair.publicKey)), keyPair.publicKey);
-// const otherKeyPair = nacl.box.keyPair();
-// const nonce = nacl.randomBytes(24)
-// const box = nacl.box(
-//   naclUtil.decodeUTF8('Hi there!'),
-//   nonce,
-//   otherKeyPair.publicKey,
-//   keyPair.secretKey
-// )
-// const payload = nacl.box.open(
-//   box,
-//   nonce,
-//   keyPair.publicKey,
-//   otherKeyPair.secretKey
-// );
-// console.log('payload', payload);
-// console.log(naclUtil.encodeUTF8(payload));
 
 const getAvatar = (id) => (`https://i.pravatar.cc/36?u=${id}`);
 
@@ -47,7 +29,6 @@ const encrypt = (userToPublicKey, text) => {
     new Uint8Array(userToPublicKey),
     keyPair.secretKey
   )
-  console.log('----', box, nonce,keyPair.publicKey)
   return {
     box: Array.from(box),
     nonce: Array.from(nonce)
@@ -55,15 +36,12 @@ const encrypt = (userToPublicKey, text) => {
 }
 
 const decrypt = (userFromPublicKey, message) => {
-  console.log('message', message, userFromPublicKey)
-  console.log('----', message.box, message.nonce, userFromPublicKey)
   const payload = nacl.box.open(
     new Uint8Array(message.box),
     new Uint8Array(message.nonce),
     new Uint8Array(userFromPublicKey),
     keyPair.secretKey
   );
-  console.log('payload', payload);
   return naclUtil.encodeUTF8(payload)
 }
 
@@ -77,7 +55,6 @@ const keyToStr = (key) => {
 function App() {
   const [messages, setMessages] = useState([]);
   const [users, dispatchUsers] = useReducer((state, presenceEvent) => {
-    console.log('presenceEvent', presenceEvent)
     const { action, uuid } = presenceEvent;
     if (action === 'join' || action === 'state-change' || action === 'here-now') {
       if (uuid === userId) {
@@ -94,9 +71,7 @@ function App() {
       }
       return { ...state };
     } else if (action === 'leave' || action === 'timeout') {
-      console.log('Deleting user', uuid);
       delete state[uuid];
-      console.log('state', state);
       return { ...state };
     }
     return state;
@@ -105,26 +80,28 @@ function App() {
   useEffect(() => {
     const listener = {
       message: function (m) {
-        console.log(m);
         const { message } = m;
         const { messages } = message;
+        console.log('Incoming messages', messages)
         const newMessages = messages.filter(msg => {
-          return msg.user.id !== userId
-        }).forEach(msg => {
+          console.log('msg.to === userId', msg.to, userId);
+          return msg.user.id !== userId && // Message is not sent from me
+            users[msg.user.id] && // I know the sender
+            msg.to === userId; // Message is sent to me
+        }).map(msg => {
           const userFrom = users[msg.user.id];
           const userFromPublicKey = userFrom.publicKey;
-          const {encrypted} = msg;
-          console.log('userFromPublicKey, encrypted', userFromPublicKey, encrypted)
-          msg.text = decrypt(userFromPublicKey, encrypted);
-          return msg;
+          const { encrypted } = msg;
+          return {
+            ...msg,
+            text: decrypt(userFromPublicKey, encrypted),
+          };
         })
-        
-        console.log(newMessages, newMessages)
+
         setMessages((oldMessages) =>
           (GiftedChat.append(oldMessages, newMessages)));
       },
       presence: function (presenceEvent) {
-        console.log('presence', presenceEvent);
         dispatchUsers(presenceEvent);
       }
     };
@@ -133,7 +110,6 @@ function App() {
 
     // Publish my public key
     const keyArray = Array.from(keyPair.publicKey)
-    console.log('Publish', keyArray);
     pubnub.setState({
       channels: [channel],
       state: {
@@ -144,7 +120,6 @@ function App() {
     pubnub.hereNow({ channels: [channel], includeState: true },
       (status, response) => {
         const { occupants } = response.channels[channel];
-        console.log('occupants', occupants);
         occupants.forEach(user => {
           dispatchUsers({
             action: 'here-now',
@@ -165,19 +140,24 @@ function App() {
   const sendMessage = (newMessages) => {
     setMessages((oldMessages) =>
       (GiftedChat.append(oldMessages, newMessages)));
-    console.log('newMessages', newMessages)
 
     Object.values(users).forEach(user => {
       const { publicKey } = user;
-      newMessages.forEach(message => {
-        const { text } = message;
+      const messagesToPublish = newMessages.map(message => {
+        const { createdAt, text, id } = message;
         const encrypted = encrypt(publicKey, text);
-        message.encrypted = encrypted;
+        return {
+          createdAt,
+          user: message.user,
+          encrypted,
+          id,
+          to: user.id
+        }
       });
       pubnub.publish({
         channel: channel,
         message: {
-          messages: newMessages
+          messages: messagesToPublish
         }
       });
     });
