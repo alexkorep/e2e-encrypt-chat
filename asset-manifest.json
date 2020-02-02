@@ -1,0 +1,22 @@
+{
+  "files": {
+    "main.css": "/e2e-encrypt-chat/static/css/main.d1b05096.chunk.css",
+    "main.js": "/e2e-encrypt-chat/static/js/main.8f275329.chunk.js",
+    "main.js.map": "/e2e-encrypt-chat/static/js/main.8f275329.chunk.js.map",
+    "runtime-main.js": "/e2e-encrypt-chat/static/js/runtime-main.5f539fe4.js",
+    "runtime-main.js.map": "/e2e-encrypt-chat/static/js/runtime-main.5f539fe4.js.map",
+    "static/js/2.f606d094.chunk.js": "/e2e-encrypt-chat/static/js/2.f606d094.chunk.js",
+    "static/js/2.f606d094.chunk.js.map": "/e2e-encrypt-chat/static/js/2.f606d094.chunk.js.map",
+    "index.html": "/e2e-encrypt-chat/index.html",
+    "precache-manifest.3a2849d04aa96ea7292164d6ac8812b0.js": "/e2e-encrypt-chat/precache-manifest.3a2849d04aa96ea7292164d6ac8812b0.js",
+    "service-worker.js": "/e2e-encrypt-chat/service-worker.js",
+    "static/css/main.d1b05096.chunk.css.map": "/e2e-encrypt-chat/static/css/main.d1b05096.chunk.css.map",
+    "static/js/2.f606d094.chunk.js.LICENSE.txt": "/e2e-encrypt-chat/static/js/2.f606d094.chunk.js.LICENSE.txt"
+  },
+  "entrypoints": [
+    "static/js/runtime-main.5f539fe4.js",
+    "static/js/2.f606d094.chunk.js",
+    "static/css/main.d1b05096.chunk.css",
+    "static/js/main.8f275329.chunk.js"
+  ]
+}
