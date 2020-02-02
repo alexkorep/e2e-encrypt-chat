@@ -1,43 +1,39 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useReducer } from 'react';
 import PubNub from 'pubnub';
-import { GiftedChat } from 'react-web-gifted-chat';
+import { GiftedChat, GiftedAvatar } from 'react-web-gifted-chat';
 
 import './App.css';
+
+const channel = 'chat';
+const userId = Math.random().toString(10).slice(2);
 
 const pubnub = new PubNub({
   publishKey: 'pub-c-5e44bacc-d9b4-4d11-9462-089626f7f2e6',
   subscribeKey: 'sub-c-347badce-45ed-11ea-aea8-722f8d3d4603',
+  uuid: userId,
 });
-// var box = document.getElementById("box"), input = document.getElementById("input"), channel = 'chat';
 
-// input.addEventListener('keypress', function (e) {
-//   (e.keyCode || e.charCode) === 13 && pubnub.publish({ // Publish new message when enter is pressed.
-//     channel: channel, message: input.value, x: (input.value = '')
-//   });
-// });
-
-const channel = 'chat';
-const userId = Math.random().toString(10).slice(2);
-console.log(userId)
+const getAvatar = (id) => (`https://i.pravatar.cc/36?u=${id}`);
 
 function App() {
-  const [messages, setMessages] = useState([
-    // {
-    //   id: 1,
-    //   text: 'Hello developer',
-    //   createdAt: new Date(),
-    //   user: {
-    //     id: 2,
-    //     name: 'React',
-    //     avatar: 'https://facebook.github.io/react/img/logo_og.png',
-    //   },
-    // },
-  ]);
+  const [messages, setMessages] = useState([]);
+  const [users, dispatchUsers] = useReducer((state, presenceEvent) => {
+    const {action, uuid} = presenceEvent;
+    if (action === 'join') {
+      state[uuid] = {
+        id: uuid,
+      };
+      return {...state};
+    } else if (action === 'leave' || action === 'timeout'){
+      delete state[uuid];
+      return {...state};
+    }
+    return state;
+  }, {});
 
   useEffect(() => {
     const listener = {
       message: function (m) {
-        // box.innerHTML = ('' + m.message).replace(/[<>]/g, '') + '<br>' + box.innerHTML; // Add message to page.
         console.log(m);
         const { message } = m;
         const { messages } = message;
@@ -47,8 +43,12 @@ function App() {
         setMessages((oldMessages) =>
           (GiftedChat.append(oldMessages, newMessages)));
       },
+      presence: function (presenceEvent) {
+        console.log('presence', presenceEvent);
+        dispatchUsers(presenceEvent);
+      }
     };
-    pubnub.subscribe({ channels: [channel] }); // Subscribe to a channel.
+    pubnub.subscribe({ channels: [channel], withPresence: true });
     pubnub.addListener(listener);
     return () => {
       pubnub.unsubscribe({ channels: [channel] });
@@ -70,8 +70,22 @@ function App() {
   return (
     <div className="App" style={styles.container}>
       <div style={styles.conversationList}>
-        Converstions
-        </div>
+        <h2>Participants</h2>
+        {
+          Object.values(users).map(user => {
+            return (
+              <div key={user.id} style={styles.userrec}>
+                <GiftedAvatar user={{
+                  id: user.id,
+                  avatar: getAvatar(user.id),
+                }} />
+                {user.id === userId ? 'Me: ' : ''}
+                {user.id}
+              </div>
+            )
+          })
+        }
+      </div>
       <div style={styles.chat}>
         <GiftedChat
           messages={messages}
@@ -79,7 +93,7 @@ function App() {
           user={{
             id: userId,
             name: userId.toString(),
-            avatar: `https://i.pravatar.cc/36?u=${userId}`,
+            avatar: getAvatar(userId),
           }}
         />
       </div>
@@ -101,6 +115,8 @@ const styles = {
   conversationList: {
     display: 'flex',
     flex: 1,
+    flexDirection: 'column',
+    padding: '12px',
   },
   chat: {
     display: "flex",
@@ -114,6 +130,9 @@ const styles = {
   converationDetails: {
     display: 'flex',
     flex: 1,
+  },
+  userrec: {
+    padding: '8px',
   }
 }
 
