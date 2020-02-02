@@ -5,7 +5,9 @@ import { GiftedChat, GiftedAvatar } from 'react-web-gifted-chat';
 import './App.css';
 
 const channel = 'chat';
-const userId = Math.random().toString(10).slice(2);
+const userId = localStorage.getItem('userId') ||
+  Math.random().toString(10).slice(2);
+localStorage.setItem('userId', userId);
 
 const pubnub = new PubNub({
   publishKey: 'pub-c-5e44bacc-d9b4-4d11-9462-089626f7f2e6',
