@@ -14,7 +14,7 @@
 importScripts("https://storage.googleapis.com/workbox-cdn/releases/4.3.1/workbox-sw.js");
 
 importScripts(
-  "/e2e-encrypt-chat/precache-manifest.7e8402b61d197e649283751822fb9e51.js"
+  "/e2e-encrypt-chat/precache-manifest.3a8a07147a4fa0fa251e7ce1b672a1a5.js"
 );
 
 self.addEventListener('message', (event) => {

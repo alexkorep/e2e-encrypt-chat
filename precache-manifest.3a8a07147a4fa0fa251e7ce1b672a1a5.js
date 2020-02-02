@@ -1,10 +1,10 @@
 self.__precacheManifest = (self.__precacheManifest || []).concat([
   {
-    "revision": "8afc6bb3f0fd47ba0e5209d6fa2a141c",
+    "revision": "f347691e38d75616fcc80b5e70b105f1",
     "url": "/e2e-encrypt-chat/index.html"
   },
   {
-    "revision": "33622a3d69d867b691b9",
+    "revision": "2fd5dff4ac43dafba336",
     "url": "/e2e-encrypt-chat/static/css/main.039e8607.chunk.css"
   },
   {
@@ -16,8 +16,8 @@ self.__precacheManifest = (self.__precacheManifest || []).concat([
     "url": "/e2e-encrypt-chat/static/js/2.4ffd47c5.chunk.js.LICENSE.txt"
   },
   {
-    "revision": "33622a3d69d867b691b9",
-    "url": "/e2e-encrypt-chat/static/js/main.b17108ad.chunk.js"
+    "revision": "2fd5dff4ac43dafba336",
+    "url": "/e2e-encrypt-chat/static/js/main.3a05897e.chunk.js"
   },
   {
     "revision": "7b98dd749ff6100e04d6",
