@@ -6,9 +6,9 @@ import naclUtil from 'tweetnacl-util';
 
 import './App.css';
 
-const channel = '41ad55e8-69e7-4386-8e3d-128295e09140';
+const channel = '41ad55e8-69e7-4386-8e3d-128765e09140';
 const userId = localStorage.getItem('userId') ||
-  Math.random().toString(10).slice(2);
+  Math.random().toString(10).slice(12);
 localStorage.setItem('userId', userId);
 
 const pubnub = new PubNub({
@@ -49,95 +49,75 @@ const keyToStr = (key) => {
   if (!key) {
     return 'none';
   }
-  return key.map(val => val.toString(10)).join('-');
+  return key.map(val => val.toString(16)).join('-');
+}
+
+const reducer = (state, event) => {
+  const { action } = event;
+  const { users, messages } = state;
+  console.log('Dispatch', action);
+  if (action === 'join' || action === 'state-change' || action === 'here-now') {
+    const { uuid } = event;
+    // add/update user
+    if (uuid === userId) {
+      // Ignore myself
+      return state;
+    }
+    users[uuid] = {
+      ...users[uuid],
+      id: uuid,
+    };
+    const publicKey = event.state ? event.state.publicKey : null;
+    if (publicKey) {
+      users[uuid].publicKey = publicKey;
+    }
+    return {
+      ...state,
+      users,
+    };
+  } else if (action === 'leave' || action === 'timeout') {
+    // delete the user
+    const { uuid } = event;
+    delete users[uuid];
+    return { ...state, users };
+  } else if (action === 'incoming-messages') {
+    // Incoming messages from others
+    const newMessages = event.messages.filter(msg => {
+      // Get only messages sent to me
+      return users[msg.user.id] && // I know the sender
+        msg.to === userId; // Message is sent to me
+    }).map(msg => {
+      const userFrom = users[msg.user.id];
+      return {
+        ...msg,
+        // Decrypt the message with sender public key
+        text: decrypt(userFrom.publicKey, msg.encrypted),
+      };
+    });
+    // Append decrypted messages to the chat
+    return {
+      ...state,
+      messages: GiftedChat.append(messages, newMessages),
+    }
+  } else if (action === 'my-messages') {
+    // Append my messages to the chat
+    return {
+      ...state,
+      messages: GiftedChat.append(messages, event.messages),
+    }
+  }
+  return state;
 }
 
 function App() {
-  const [appstate, dispatch] = useReducer((state, event) => {
-    const { action, uuid } = event;
-    const { users, messages } = state;
-    console.log('Dispatch', action, uuid);
-    if (action === 'join' || action === 'state-change' || action === 'here-now') {
-      // add/update user
-      if (uuid === userId) {
-        // Ignore myself
-        return state;
-      }
-      users[uuid] = {
-        ...users[uuid],
-        id: uuid,
-      };
-      const publicKey = event.state ? event.state.publicKey : null;
-      if (publicKey) {
-        users[uuid].publicKey = publicKey;
-      }
-      return {
-        ...state,
-        users,
-      };
-    } else if (action === 'leave' || action === 'timeout') {
-      // delete user
-      delete users[uuid];
-      return { ...state, users };
-    } else if (action === 'incoming-messages') {
-      const incomingMessages = event.messages
-      console.log('Incoming messages', incomingMessages)
-      const newMessages = incomingMessages.filter(msg => {
-        console.log('msg.user.id', msg.user.id);
-        console.log('userId', userId);
-        console.log('users[msg.user.id]', users[msg.user.id]);
-        console.log('msg.to', msg.to);
-        return msg.user.id !== userId && // Message is not sent from me
-          users[msg.user.id] && // I know the sender
-          msg.to === userId; // Message is sent to me
-      }).map(msg => {
-        const userFrom = users[msg.user.id];
-        const userFromPublicKey = userFrom.publicKey;
-        const { encrypted } = msg;
-        console.log('decrypting message', msg);
-        return {
-          ...msg,
-          text: decrypt(userFromPublicKey, encrypted),
-        };
-      })
-      return {
-        ...state,
-        messages: GiftedChat.append(messages, newMessages),
-      }
-    } else if (action === 'my-messages') {
-      return {
-        ...state,
-        messages: GiftedChat.append(messages, event.messages),
-      }
-    }
-    return state;
-  }, {
+  const [appstate, dispatch] = useReducer(reducer, {
     users: {},
     messages: [],
   });
-  const { users, messages } = appstate
+  const { users, messages } = appstate;
 
   useEffect(() => {
-    console.log('>>> Subscribing to PubNub');
-    const listener = {
-      message: function (m) {
-        const { message } = m;
-        message.action = 'incoming-messages'
-        dispatch(message)
-      },
-      presence: function (presenceEvent) {
-        dispatch(presenceEvent);
-      }
-    };
-    pubnub.subscribe({ channels: [channel], withPresence: true });
-    pubnub.addListener(listener);
-
-    return () => {
-      console.log('<<< Unsubscribing from PubNub');
-      pubnub.unsubscribe({ channels: [channel] });
-      pubnub.removeListener(listener);
-    };
-  }, [users]);
+  }, []);
 
   useEffect(() => {
     // On start, publish my public key
@@ -164,19 +144,51 @@ function App() {
         })
       }
     );
+
+    // PubNub message and presence listener
+    const listener = {
+      message: function (m) {
+        const { message } = m;
+        message.action = 'incoming-messages'
+        dispatch(message)
+      },
+      presence: function (presenceEvent) {
+        dispatch(presenceEvent);
+      }
+    };
+
+    // On start, subscribe to PubNub events
+    pubnub.subscribe({ channels: [channel], withPresence: true });
+    pubnub.addListener(listener);
+
+    return () => {
+      pubnub.unsubscribe({ channels: [channel] });
+      pubnub.removeListener(listener);
+    };
   }, [])
 
+  /**
+   * Send message to others
+   * @param {Array of message} newMessages - Messages to send
+   */
   const sendMessage = (newMessages) => {
+    // Update the chat UI
     const event = {
       action: 'my-messages',
       messages: newMessages,
     }
     dispatch(event)
 
-    Object.values(users).forEach(user => {
+    // For every participant, encrypt the message and sent it 
+    // via PubNub
+    Object.values(users).filter(
+      // Do not send to myself
+      user => (user.id !== userId),
+    ).forEach(user => {
       const { publicKey } = user;
       const messagesToPublish = newMessages.map(message => {
         const { createdAt, text, id } = message;
+        // Encrypt the message
         const encrypted = encrypt(publicKey, text);
         return {
           createdAt,
@@ -198,26 +210,33 @@ function App() {
   return (
     <div className="App" style={styles.container}>
       <div style={styles.conversationList}>
-        <div>
-          My ID: {userId}
+        <div style={styles.userrec}>
+          <div style={styles.userId}>
+            <GiftedAvatar user={{
+              id: userId,
+              avatar: getAvatar(userId),
+            }} />
+            {userId}
+          </div>
+          <div style={styles.publicKey}>
+            Public key: {keyToStr(Array.from(keyPair.publicKey))}
+          </div>
         </div>
-        <div>
-          My public key: {keyToStr(keyPair.publicKey)}
-        </div>
-
         <h2>Participants</h2>
         {
           Object.values(users).map(user => {
             return (
               <div key={user.id} style={styles.userrec}>
-                <div>
+                <div style={styles.userId}>
                   <GiftedAvatar user={{
                     id: user.id,
                     avatar: getAvatar(user.id),
                   }} />
+                  {user.id}
                 </div>
-                <div>{user.id}</div>
-                <div>Public key: {keyToStr(user.publicKey)}</div>
+                <div style={styles.publicKey}>
+                  Public key: {keyToStr(user.publicKey)}
+                </div>
               </div>
             )
           })
@@ -263,8 +282,19 @@ const styles = {
     borderLeftStyle: "solid",
   },
   userrec: {
+    display: "flex",
+    flexDirection: "column",
     padding: '8px',
-  }
+    border: '1px solid #aaa',
+  },
+  userId: {
+    display: 'flex',
+    flexDirection: 'row',
+    fontSize: '16px',
+  },
+  publicKey: {
+    fontSize: '12px',
+  },
 }
 
 export default App;
