@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useReducer } from 'react';
+import React, { useEffect, useReducer } from 'react';
 import PubNub from 'pubnub';
 import { GiftedChat, GiftedAvatar } from 'react-web-gifted-chat';
 import nacl from 'tweetnacl'
@@ -6,7 +6,7 @@ import naclUtil from 'tweetnacl-util';
 
 import './App.css';
 
-const channel = 'chat';
+const channel = '41ad55e8-69e7-4386-8e3d-128295e09140';
 const userId = localStorage.getItem('userId') ||
   Math.random().toString(10).slice(2);
 localStorage.setItem('userId', userId);
@@ -53,61 +53,80 @@ const keyToStr = (key) => {
 }
 
 function App() {
-  const [messages, setMessages] = useState([]);
-  const [users, dispatchUsers] = useReducer((state, presenceEvent) => {
-    const { action, uuid } = presenceEvent;
+  const [appstate, dispatch] = useReducer((state, event) => {
+    const { action, uuid } = event;
+    const { users, messages } = state;
+    console.log('Dispatch', action, uuid);
     if (action === 'join' || action === 'state-change' || action === 'here-now') {
+      // add/update user
       if (uuid === userId) {
         // Ignore myself
         return state;
       }
-      state[uuid] = {
-        ...state[uuid],
+      users[uuid] = {
+        ...users[uuid],
         id: uuid,
       };
-      const publicKey = presenceEvent.state ? presenceEvent.state.publicKey : null;
+      const publicKey = event.state ? event.state.publicKey : null;
       if (publicKey) {
-        state[uuid].publicKey = publicKey;
+        users[uuid].publicKey = publicKey;
       }
-      return { ...state };
+      return {
+        ...state,
+        users,
+      };
     } else if (action === 'leave' || action === 'timeout') {
-      delete state[uuid];
-      return { ...state };
+      // delete user
+      delete users[uuid];
+      return { ...state, users };
+    } else if (action === 'incoming-messages') {
+      const incomingMessages = event.messages
+      console.log('Incoming messages', incomingMessages)
+      const newMessages = incomingMessages.filter(msg => {
+        console.log('msg.user.id', msg.user.id);
+        console.log('userId', userId);
+        console.log('users[msg.user.id]', users[msg.user.id]);
+        console.log('msg.to', msg.to);
+        return msg.user.id !== userId && // Message is not sent from me
+          users[msg.user.id] && // I know the sender
+          msg.to === userId; // Message is sent to me
+      }).map(msg => {
+        const userFrom = users[msg.user.id];
+        const userFromPublicKey = userFrom.publicKey;
+        const { encrypted } = msg;
+        console.log('decrypting message', msg);
+        return {
+          ...msg,
+          text: decrypt(userFromPublicKey, encrypted),
+        };
+      })
+      return {
+        ...state,
+        messages: GiftedChat.append(messages, newMessages),
+      }
+    } else if (action === 'my-messages') {
+      return {
+        ...state,
+        messages: GiftedChat.append(messages, event.messages),
+      }
     }
     return state;
-  }, {});
+  }, {
+    users: {},
+    messages: [],
+  });
+  const { users, messages } = appstate
 
   useEffect(() => {
     console.log('>>> Subscribing to PubNub');
     const listener = {
       message: function (m) {
         const { message } = m;
-        const { messages } = message;
-        console.log('Incoming messages', messages)
-        const newMessages = messages.filter(msg => {
-          console.log('msg.user.id', msg.user.id);
-          console.log('userId', userId);
-          console.log('users[msg.user.id]', users[msg.user.id]);
-          console.log('msg.to', msg.to);
-          return msg.user.id !== userId && // Message is not sent from me
-            users[msg.user.id] && // I know the sender
-            msg.to === userId; // Message is sent to me
-        }).map(msg => {
-          const userFrom = users[msg.user.id];
-          const userFromPublicKey = userFrom.publicKey;
-          const { encrypted } = msg;
-          console.log('decrypting message', msg);
-          return {
-            ...msg,
-            text: decrypt(userFromPublicKey, encrypted),
-          };
-        })
-
-        setMessages((oldMessages) =>
-          (GiftedChat.append(oldMessages, newMessages)));
+        message.action = 'incoming-messages'
+        dispatch(message)
       },
       presence: function (presenceEvent) {
-        dispatchUsers(presenceEvent);
+        dispatch(presenceEvent);
       }
     };
     pubnub.subscribe({ channels: [channel], withPresence: true });
@@ -135,7 +154,7 @@ function App() {
       (status, response) => {
         const { occupants } = response.channels[channel];
         occupants.forEach(user => {
-          dispatchUsers({
+          dispatch({
             action: 'here-now',
             uuid: user.uuid,
             state: {
@@ -148,8 +167,11 @@ function App() {
   }, [])
 
   const sendMessage = (newMessages) => {
-    setMessages((oldMessages) =>
-      (GiftedChat.append(oldMessages, newMessages)));
+    const event = {
+      action: 'my-messages',
+      messages: newMessages,
+    }
+    dispatch(event)
 
     Object.values(users).forEach(user => {
       const { publicKey } = user;
@@ -177,9 +199,12 @@ function App() {
     <div className="App" style={styles.container}>
       <div style={styles.conversationList}>
         <div>
-          My public key: { keyToStr(keyPair.publicKey) }
+          My ID: {userId}
         </div>
-        
+        <div>
+          My public key: {keyToStr(keyPair.publicKey)}
+        </div>
+
         <h2>Participants</h2>
         {
           Object.values(users).map(user => {
