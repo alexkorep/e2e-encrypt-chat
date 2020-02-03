@@ -78,13 +78,17 @@ function App() {
   }, {});
 
   useEffect(() => {
+    console.log('>>> Subscribing to PubNub');
     const listener = {
       message: function (m) {
         const { message } = m;
         const { messages } = message;
         console.log('Incoming messages', messages)
         const newMessages = messages.filter(msg => {
-          console.log('msg.to === userId', msg.to, userId);
+          console.log('msg.user.id', msg.user.id);
+          console.log('userId', userId);
+          console.log('users[msg.user.id]', users[msg.user.id]);
+          console.log('msg.to', msg.to);
           return msg.user.id !== userId && // Message is not sent from me
             users[msg.user.id] && // I know the sender
             msg.to === userId; // Message is sent to me
@@ -92,6 +96,7 @@ function App() {
           const userFrom = users[msg.user.id];
           const userFromPublicKey = userFrom.publicKey;
           const { encrypted } = msg;
+          console.log('decrypting message', msg);
           return {
             ...msg,
             text: decrypt(userFromPublicKey, encrypted),
@@ -108,7 +113,15 @@ function App() {
     pubnub.subscribe({ channels: [channel], withPresence: true });
     pubnub.addListener(listener);
 
-    // Publish my public key
+    return () => {
+      console.log('<<< Unsubscribing from PubNub');
+      pubnub.unsubscribe({ channels: [channel] });
+      pubnub.removeListener(listener);
+    };
+  }, [users]);
+
+  useEffect(() => {
+    // On start, publish my public key
     const keyArray = Array.from(keyPair.publicKey)
     pubnub.setState({
       channels: [channel],
@@ -117,6 +130,7 @@ function App() {
       }
     });
 
+    // On start, request participants
     pubnub.hereNow({ channels: [channel], includeState: true },
       (status, response) => {
         const { occupants } = response.channels[channel];
@@ -131,11 +145,7 @@ function App() {
         })
       }
     );
-    return () => {
-      pubnub.unsubscribe({ channels: [channel] });
-      pubnub.removeListener(listener);
-    };
-  }, []);
+  }, [])
 
   const sendMessage = (newMessages) => {
     setMessages((oldMessages) =>
@@ -166,6 +176,10 @@ function App() {
   return (
     <div className="App" style={styles.container}>
       <div style={styles.conversationList}>
+        <div>
+          My public key: { keyToStr(keyPair.publicKey) }
+        </div>
+        
         <h2>Participants</h2>
         {
           Object.values(users).map(user => {
