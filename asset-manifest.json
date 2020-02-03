@@ -1,22 +1,22 @@
 {
   "files": {
     "main.css": "/e2e-encrypt-chat/static/css/main.039e8607.chunk.css",
-    "main.js": "/e2e-encrypt-chat/static/js/main.3a05897e.chunk.js",
-    "main.js.map": "/e2e-encrypt-chat/static/js/main.3a05897e.chunk.js.map",
+    "main.js": "/e2e-encrypt-chat/static/js/main.0c5db14c.chunk.js",
+    "main.js.map": "/e2e-encrypt-chat/static/js/main.0c5db14c.chunk.js.map",
     "runtime-main.js": "/e2e-encrypt-chat/static/js/runtime-main.5f539fe4.js",
     "runtime-main.js.map": "/e2e-encrypt-chat/static/js/runtime-main.5f539fe4.js.map",
-    "static/js/2.4ffd47c5.chunk.js": "/e2e-encrypt-chat/static/js/2.4ffd47c5.chunk.js",
-    "static/js/2.4ffd47c5.chunk.js.map": "/e2e-encrypt-chat/static/js/2.4ffd47c5.chunk.js.map",
+    "static/js/2.b1d6721e.chunk.js": "/e2e-encrypt-chat/static/js/2.b1d6721e.chunk.js",
+    "static/js/2.b1d6721e.chunk.js.map": "/e2e-encrypt-chat/static/js/2.b1d6721e.chunk.js.map",
     "index.html": "/e2e-encrypt-chat/index.html",
-    "precache-manifest.3a8a07147a4fa0fa251e7ce1b672a1a5.js": "/e2e-encrypt-chat/precache-manifest.3a8a07147a4fa0fa251e7ce1b672a1a5.js",
+    "precache-manifest.d3e3cb3cfa1a4a027940667d82edeadc.js": "/e2e-encrypt-chat/precache-manifest.d3e3cb3cfa1a4a027940667d82edeadc.js",
     "service-worker.js": "/e2e-encrypt-chat/service-worker.js",
     "static/css/main.039e8607.chunk.css.map": "/e2e-encrypt-chat/static/css/main.039e8607.chunk.css.map",
-    "static/js/2.4ffd47c5.chunk.js.LICENSE.txt": "/e2e-encrypt-chat/static/js/2.4ffd47c5.chunk.js.LICENSE.txt"
+    "static/js/2.b1d6721e.chunk.js.LICENSE.txt": "/e2e-encrypt-chat/static/js/2.b1d6721e.chunk.js.LICENSE.txt"
   },
   "entrypoints": [
     "static/js/runtime-main.5f539fe4.js",
-    "static/js/2.4ffd47c5.chunk.js",
+    "static/js/2.b1d6721e.chunk.js",
     "static/css/main.039e8607.chunk.css",
-    "static/js/main.3a05897e.chunk.js"
+    "static/js/main.0c5db14c.chunk.js"
   ]
 }
